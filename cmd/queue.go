@@ -10,16 +10,16 @@ import (
 )
 
 type client struct {
-	//implement correct client usage
-	ip   net.IP
-	port int
+	ip net.IP
+	//port int
 }
 
-func newClient(ip net.IP, port int) (client, error) {
-	if port < 0 || port > 65535 {
-		return client{}, fmt.Errorf("invalid port %d", port)
-	}
-	sqc := client{ip: ip, port: port}
+func newClient(ip net.IP /*port int*/) (client, error) {
+	//implement correct json parsing for the client
+	//if port < 1 || port > 65535 {
+	//	return client{}, fmt.Errorf("invalid port %d", port)
+	//}
+	sqc := client{ip: ip /*port: port*/}
 	return sqc, nil
 }
 
@@ -31,8 +31,9 @@ type Queue struct {
 
 func newQueue(name string) Queue {
 	q := Queue{
-		name:  name,
-		queue: make(chan io.Reader),
+		name:    name,
+		queue:   make(chan io.Reader),
+		clients: []client{},
 	}
 	return q
 }
@@ -65,8 +66,12 @@ func (q *Queue) Send(msg io.Reader) {
 }
 
 func (q *Queue) Subscribe(w http.ResponseWriter, r *http.Request) {
+	//implement correct json parsing for the client
 	ip, _, _ := net.ParseCIDR(r.RemoteAddr)
-	c := client{ip: ip}
+	c, err := newClient(ip)
+	if err != nil {
+		slog.Error(err.Error())
+	}
 	q.clients = append(q.clients, c)
 	slog.Info(fmt.Sprintf("Added client %v to queue %v", r.RemoteAddr, q.name))
 }
