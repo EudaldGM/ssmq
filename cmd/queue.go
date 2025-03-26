@@ -3,20 +3,21 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 )
 
 type Queue struct {
 	name    string
-	queue   chan any
+	queue   chan io.Reader
 	clients []string
 }
 
 func newQueue(name string) Queue {
 	q := Queue{
 		name:  name,
-		queue: make(chan any),
+		queue: make(chan io.Reader),
 	}
 	return q
 }
@@ -31,16 +32,20 @@ func (q *Queue) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case msg := <-q.queue:
-			slog.Info("Received Message" + msg.(string))
 			//write to disk
 			q.Send(msg)
 		}
 	}
 }
 
-func (q *Queue) Send(msg any) {
-	//for _, client := range q.clients {
-	//}
+func (q *Queue) Send(msg io.Reader) {
+	for _, client := range q.clients {
+		_, err := http.NewRequest("POST", client, msg)
+		if err != nil {
+			slog.Error(err.Error())
+		}
+	}
+	slog.Info("Send message to clients")
 }
 
 func (q *Queue) Subscribe(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +62,6 @@ func (q *Queue) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (q *Queue) Receive(_ http.ResponseWriter, r *http.Request) {
-
 	q.queue <- r.Body
+	slog.Info("Received Message")
 }
